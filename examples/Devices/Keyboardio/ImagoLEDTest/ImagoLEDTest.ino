@@ -1,11 +1,20 @@
-#include<Wire.h>
 #include<avr/pgmspace.h>
 #include <Arduino.h>
+
+extern "C" {
+#include "twi.h"
+}
+
+#define ELEMENTS(arr)  (sizeof(arr) / sizeof((arr)[0]))
+
+
 #define ADDR_IS31 0x60
 #define R 0x25
 #define G 0xC0
 #define B 0xFF
 uint8_t i,j;
+
+
 
 static constexpr uint8_t brightness_steps = 64;
 const PROGMEM byte PWM_Gamma_Brightness[64]=
@@ -23,8 +32,12 @@ const PROGMEM byte PWM_Gamma_Brightness[64]=
 void setup() {
     digitalWrite(MOSI, HIGH);
     digitalWrite(SS, HIGH);
-    Wire.begin();
-    Wire.setClock(700000);//I2C 1MHz
+uint8_t twi_uninitialized = 1;
+TWBR=12;
+  if (twi_uninitialized--) {
+    twi_init();
+  }
+
     //TWBR=2;
     Init_3741(R, G, B);
 }
@@ -40,10 +53,9 @@ void loop() {
 }
 
 void TWI_Send(uint8_t addr,uint8_t Reg_Add,uint8_t Reg_Dat) {
-    Wire.beginTransmission(Dev_Add/2); // transmit to device IS31FL373x
-    Wire.write(Reg_Add); // sends regaddress
-    Wire.write(Reg_Dat); // sends register data
-    Wire.endTransmission(); // stop transmitting
+  uint8_t data[] = {Reg_Add, Reg_Dat };
+  uint8_t result = twi_writeTo(addr/2, data, ELEMENTS(data), 1, 0);
+
 }
 
 
