@@ -39,7 +39,7 @@ void loop() {
     delay(5);
 }
 
-void IS_IIC_WriteByte(uint8_t Dev_Add,uint8_t Reg_Add,uint8_t Reg_Dat) {
+void TWI_Send(uint8_t addr,uint8_t Reg_Add,uint8_t Reg_Dat) {
     Wire.beginTransmission(Dev_Add/2); // transmit to device IS31FL373x
     Wire.write(Reg_Add); // sends regaddress
     Wire.write(Reg_Dat); // sends register data
@@ -52,14 +52,14 @@ static constexpr uint8_t REGISTER_WRITE_ENABLE = 0xFE;
 
 static constexpr uint8_t WRITE_ENABLE_ONCE = 0b11000101;
 void cmd_3741_unlock() {
-    IS_IIC_WriteByte(ADDR_IS31,REGISTER_WRITE_ENABLE, WRITE_ENABLE_ONCE);//unlock
+    TWI_Send(ADDR_IS31,REGISTER_WRITE_ENABLE, WRITE_ENABLE_ONCE);//unlock
 }
 
 void cmd_3741_write_page(uint8_t page) {
     // Registers automatically get locked at startup and after a given write
     // It'd be nice to disable that.
     cmd_3741_unlock();
-    IS_IIC_WriteByte(ADDR_IS31,REGISTER_SET_PAGE,page);
+    TWI_Send(ADDR_IS31,REGISTER_SET_PAGE,page);
 }
 
 
@@ -72,30 +72,30 @@ void init_pwm_data() {
 void Init_3741(uint8_t Rdata, uint8_t Gdata, uint8_t Bdata) {
     cmd_3741_write_page(2);
     for(i=2; i<0xB4; i+=3) {
-        IS_IIC_WriteByte(ADDR_IS31,i,Rdata);//R LED Scaling
-    }
-    for(i=1; i<0xB4; i+=3) {
-        IS_IIC_WriteByte(ADDR_IS31,i,Gdata);//G LED Scaling
+        TWI_Send(ADDR_IS31,i,Rdata);//R LED Scaling
     }
     for(i=0; i<0xB4; i+=3) {
-        IS_IIC_WriteByte(ADDR_IS31,i,Bdata);//B LED Scaling
+        TWI_Send(ADDR_IS31,i,Bdata);//B LED Scaling
+    }
+    for(i=1; i<0xB4; i+=3) {
+        TWI_Send(ADDR_IS31,i,Gdata);//B LED Scaling
     }
     cmd_3741_write_page(3);
     for(i=2; i<0xAB; i+=3) {
-        IS_IIC_WriteByte(ADDR_IS31,i,Rdata);//R LED Scaling
+        TWI_Send(ADDR_IS31,i,Rdata);//R LED Scaling
     }
     for(i=1; i<0xAB; i+=3) {
-        IS_IIC_WriteByte(ADDR_IS31,i,Gdata);//G LED Scaling
+        TWI_Send(ADDR_IS31,i,Gdata);//G LED Scaling
     }
     for(i=0; i<0xAB; i+=3) {
-        IS_IIC_WriteByte(ADDR_IS31,i,Bdata);//B LED Scaling
+        TWI_Send(ADDR_IS31,i,Bdata);//B LED Scaling
     }
 
     init_pwm_data();
 
     cmd_3741_write_page(4);
-    IS_IIC_WriteByte(ADDR_IS31,0x01,0x7F);//global current
-    IS_IIC_WriteByte(ADDR_IS31,0x00,0x01);//normal operation
+    TWI_Send(ADDR_IS31,0x01,0x7F);//global current
+    TWI_Send(ADDR_IS31,0x00,0x01);//normal operation
 }
 
 
@@ -104,12 +104,12 @@ void set_all_pwm_to(uint8_t step) {
 
     // PWM Register 0 is 0x00 to 0xB3
     for(i=0; i<0xB4; i++) {
-        IS_IIC_WriteByte(ADDR_IS31,i,step);//set all PWM
+        TWI_Send(ADDR_IS31,i,step);//set all PWM
     }
     cmd_3741_write_page(1);
     // PWM Register 1 is 0x00 to 0xAA
     for(i=0; i<0xAB; i++) {
-        IS_IIC_WriteByte(ADDR_IS31,i,step);//set all PWM
+        TWI_Send(ADDR_IS31,i,step);//set all PWM
     }
 
 }
