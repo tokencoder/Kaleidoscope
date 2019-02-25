@@ -32,11 +32,11 @@ const PROGMEM byte PWM_Gamma_Brightness[64]=
 void setup() {
     digitalWrite(MOSI, HIGH);
     digitalWrite(SS, HIGH);
-uint8_t twi_uninitialized = 1;
-TWBR=12;
-  if (twi_uninitialized--) {
-    twi_init();
-  }
+    uint8_t twi_uninitialized = 1;
+    TWBR=12;
+    if (twi_uninitialized--) {
+        twi_init();
+    }
 
     //TWBR=2;
     Init_3741(R, G, B);
@@ -53,8 +53,8 @@ void loop() {
 }
 
 void TWI_Send(uint8_t addr,uint8_t Reg_Add,uint8_t Reg_Dat) {
-  uint8_t data[] = {Reg_Add, Reg_Dat };
-  uint8_t result = twi_writeTo(addr/2, data, ELEMENTS(data), 1, 0);
+    uint8_t data[] = {Reg_Add, Reg_Dat };
+    uint8_t result = twi_writeTo(addr/2, data, ELEMENTS(data), 1, 0);
 
 }
 
