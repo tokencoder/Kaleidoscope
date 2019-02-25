@@ -1,146 +1,130 @@
 #include<Wire.h>
 #include<avr/pgmspace.h>
 #include <Arduino.h>
-#define Addr_GND 0x60
-#define R 0x25 
+#define ADDR_IS31 0x60
+#define R 0x25
 #define G 0xC0
 #define B 0xFF
 uint8_t i,j;
 
-const PROGMEM byte PWM_Gama64[64]=
+static constexpr uint8_t brightness_steps = 64;
+const PROGMEM byte PWM_Gamma_Brightness[64]=
 {
-  0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,
-  0x08,0x09,0x0b,0x0d,0x0f,0x11,0x13,0x16,
-  0x1a,0x1c,0x1d,0x1f,0x22,0x25,0x28,0x2e,
-  0x34,0x38,0x3c,0x40,0x44,0x48,0x4b,0x4f,
-  0x55,0x5a,0x5f,0x64,0x69,0x6d,0x72,0x77,
-  0x7d,0x80,0x88,0x8d,0x94,0x9a,0xa0,0xa7,
-  0xac,0xb0,0xb9,0xbf,0xc6,0xcb,0xcf,0xd6,
-  0xe1,0xe9,0xed,0xf1,0xf6,0xfa,0xfe,0xff
+    0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,
+    0x08,0x09,0x0B,0x0D,0x0F,0x11,0x13,0x16,
+    0x1A,0x1C,0x1D,0x1F,0x22,0x25,0x28,0x2E,
+    0x34,0x38,0x3C,0x40,0x44,0x48,0x4B,0x4F,
+    0x55,0x5A,0x5F,0x64,0x69,0x6D,0x72,0x77,
+    0x7D,0x80,0x88,0x8D,0x94,0x9A,0xA0,0xA7,
+    0xAC,0xB0,0xB9,0xBF,0xC6,0xCB,0xCF,0xD6,
+    0xE1,0xE9,0xED,0xF1,0xF6,0xFA,0xFE,0xFF
 };
 
 void setup() {
-  digitalWrite(MOSI, HIGH);
-  digitalWrite(SS, HIGH);
-  Wire.begin();
-//  Wire.setClock(400000);//I2C 1MHz
-  //TWBR=2;
-  Init_3741(R, G, B);
+    digitalWrite(MOSI, HIGH);
+    digitalWrite(SS, HIGH);
+    Wire.begin();
+    Wire.setClock(700000);//I2C 1MHz
+    //TWBR=2;
+    Init_3741(R, G, B);
 }
 
 void IS31FL3741_Test_mode() {
-  Init_3741(0xff, 0x00, 0x00);
-IS31FL3741_Test_mode1();
-  Init_3741(0x00, 0xff, 0x00);
-IS31FL3741_Test_mode1();
-  Init_3741(0x00, 0x00, 0xff);
-IS31FL3741_Test_mode1();
-
- 
- Init_3741(0x90, 0x90, 0x90);
-IS31FL3741_Test_mode1();
+    Init_3741(0xff, 0xc0, 0xc0);
+    IS31FL3741_Test_mode1();
 
 }
 void loop() {
-   IS31FL3741_Test_mode();//breath mode
-   delay(5);
+    IS31FL3741_Test_mode();//breath mode
+    delay(5);
 }
 
-void IS_IIC_WriteByte(uint8_t Dev_Add,uint8_t Reg_Add,uint8_t Reg_Dat)
-{
-  Wire.beginTransmission(Dev_Add/2); // transmit to device IS31FL373x
-  Wire.write(Reg_Add); // sends regaddress
-  Wire.write(Reg_Dat); // sends regaddress
-  Wire.endTransmission(); // stop transmitting
+void IS_IIC_WriteByte(uint8_t Dev_Add,uint8_t Reg_Add,uint8_t Reg_Dat) {
+    Wire.beginTransmission(Dev_Add/2); // transmit to device IS31FL373x
+    Wire.write(Reg_Add); // sends regaddress
+    Wire.write(Reg_Dat); // sends register data
+    Wire.endTransmission(); // stop transmitting
 }
 
-void Init_3741(uint8_t Rdata, uint8_t Gdata, uint8_t Bdata)
-{
-  IS_IIC_WriteByte(Addr_GND,0xfe,0xc5);//unlock
-  IS_IIC_WriteByte(Addr_GND,0xfD,0x02);//write page 2
-  for(i=2;i<0xB4;i+=3)
-  {
-    IS_IIC_WriteByte(Addr_GND,i,Rdata);//R LED Scaling
-  }
-  for(i=1;i<0xB4;i+=3)
-  {
-    IS_IIC_WriteByte(Addr_GND,i,Gdata);//G LED Scaling
-  }
-  for(i=0;i<0xB4;i+=3)
-  {
-    IS_IIC_WriteByte(Addr_GND,i,Bdata);//B LED Scaling
-  }
-  IS_IIC_WriteByte(Addr_GND,0xfe,0xc5);//unlock
-  IS_IIC_WriteByte(Addr_GND,0xfD,0x03);//write page 3
-  for(i=2;i<0xAB;i+=3)
-  {
-    IS_IIC_WriteByte(Addr_GND,i,Rdata);//R LED Scaling
-  }
-  for(i=1;i<0xAB;i+=3)
-  {
-    IS_IIC_WriteByte(Addr_GND,i,Gdata);//G LED Scaling
-  }
-  for(i=0;i<0xAB;i+=3)
-  {
-    IS_IIC_WriteByte(Addr_GND,i,Bdata);//B LED Scaling
-  }
 
-  IS_IIC_WriteByte(Addr_GND,0xfe,0xc5);//unlock
-  IS_IIC_WriteByte(Addr_GND,0xfD,0x00);//write page 0
-  for(i=0;i<0xB4;i++)
-  {
-    IS_IIC_WriteByte(Addr_GND,i,0x00);//write all PWM set 0x00
-  }
-  IS_IIC_WriteByte(Addr_GND,0xfe,0xc5);//unlock
-  IS_IIC_WriteByte(Addr_GND,0xfD,0x01);//write page 1
-  for(i=0;i<0xAB;i++)
-  {
-    IS_IIC_WriteByte(Addr_GND,i,0x00);//write all PWM set 0x00
-  } //init all the PWM data to 0
- 
-  IS_IIC_WriteByte(Addr_GND,0xfe,0xc5);//unlock
-  IS_IIC_WriteByte(Addr_GND,0xfD,0x04);//write page 4
-  IS_IIC_WriteByte(Addr_GND,0x01,0x7F);//global current
-  IS_IIC_WriteByte(Addr_GND,0x00,0x01);//normal operation 
+static constexpr uint8_t REGISTER_SET_PAGE = 0xFD;
+static constexpr uint8_t REGISTER_WRITE_ENABLE = 0xFE;
+
+static constexpr uint8_t WRITE_ENABLE_ONCE = 0b11000101;
+void cmd_3741_unlock() {
+    IS_IIC_WriteByte(ADDR_IS31,REGISTER_WRITE_ENABLE, WRITE_ENABLE_ONCE);//unlock
 }
 
-void IS31FL3741_Test_mode1(void)//
-{
-  IS_IIC_WriteByte(Addr_GND,0xFD,0x00);//write frist frame
-  for (j=0;j<64;j++)//all LED ramping up
-  { 
-    IS_IIC_WriteByte(Addr_GND,0xfe,0xc5);//unlock
-    IS_IIC_WriteByte(Addr_GND,0xfD,0x00);//write page 0
-    for(i=0;i<0xB4;i++)
-    {
-      IS_IIC_WriteByte(Addr_GND,i,pgm_read_byte_near(&PWM_Gama64[j]));//set all PWM
-    }
-    IS_IIC_WriteByte(Addr_GND,0xfe,0xc5);//unlock
-    IS_IIC_WriteByte(Addr_GND,0xfD,0x01);//write page 1
-    for(i=0;i<0xAB;i++)
-    {
-      IS_IIC_WriteByte(Addr_GND,i,pgm_read_byte_near(&PWM_Gama64[j]));//set all PWM
-    }
-    delay(0);//10ms
-  }
-  delay(0); //keep on 1s
-  
-  for (j=63;j>0;j--)//all LED ramping down
-  {
-    IS_IIC_WriteByte(Addr_GND,0xfe,0xc5);//unlock
-    IS_IIC_WriteByte(Addr_GND,0xfD,0x00);//write page 0
-    for(i=0;i<0xB4;i++)
-    {
-      IS_IIC_WriteByte(Addr_GND,i,pgm_read_byte_near(&PWM_Gama64[j-1]));//set all PWM
-    }
-    IS_IIC_WriteByte(Addr_GND,0xfe,0xc5);//unlock
-    IS_IIC_WriteByte(Addr_GND,0xfD,0x01);//write page 1
-    for(i=0;i<0xAB;i++)
-    {
-      IS_IIC_WriteByte(Addr_GND,i,pgm_read_byte_near(&PWM_Gama64[j-1]));//set all PWM
-    }
-    delay(0);//10ms
-  } 
-  delay(0); //keep off 0.5s
+void cmd_3741_write_page(uint8_t page) {
+    // Registers automatically get locked at startup and after a given write
+    // It'd be nice to disable that.
+    cmd_3741_unlock();
+    IS_IIC_WriteByte(ADDR_IS31,REGISTER_SET_PAGE,page);
 }
-  
+
+
+
+void init_pwm_data() {
+    set_all_pwm_to(0);
+}
+
+
+void Init_3741(uint8_t Rdata, uint8_t Gdata, uint8_t Bdata) {
+    cmd_3741_write_page(2);
+    for(i=2; i<0xB4; i+=3) {
+        IS_IIC_WriteByte(ADDR_IS31,i,Rdata);//R LED Scaling
+    }
+    for(i=1; i<0xB4; i+=3) {
+        IS_IIC_WriteByte(ADDR_IS31,i,Gdata);//G LED Scaling
+    }
+    for(i=0; i<0xB4; i+=3) {
+        IS_IIC_WriteByte(ADDR_IS31,i,Bdata);//B LED Scaling
+    }
+    cmd_3741_write_page(3);
+    for(i=2; i<0xAB; i+=3) {
+        IS_IIC_WriteByte(ADDR_IS31,i,Rdata);//R LED Scaling
+    }
+    for(i=1; i<0xAB; i+=3) {
+        IS_IIC_WriteByte(ADDR_IS31,i,Gdata);//G LED Scaling
+    }
+    for(i=0; i<0xAB; i+=3) {
+        IS_IIC_WriteByte(ADDR_IS31,i,Bdata);//B LED Scaling
+    }
+
+    init_pwm_data();
+
+    cmd_3741_write_page(4);
+    IS_IIC_WriteByte(ADDR_IS31,0x01,0x7F);//global current
+    IS_IIC_WriteByte(ADDR_IS31,0x00,0x01);//normal operation
+}
+
+
+void set_all_pwm_to(uint8_t step) {
+    cmd_3741_write_page(0);
+
+    // PWM Register 0 is 0x00 to 0xB3
+    for(i=0; i<0xB4; i++) {
+        IS_IIC_WriteByte(ADDR_IS31,i,step);//set all PWM
+    }
+    cmd_3741_write_page(1);
+    // PWM Register 1 is 0x00 to 0xAA
+    for(i=0; i<0xAB; i++) {
+        IS_IIC_WriteByte(ADDR_IS31,i,step);//set all PWM
+    }
+
+}
+
+void IS31FL3741_Test_mode1() {
+
+    cmd_3741_write_page(0); // "write first frame"
+    for (j=0; j<brightness_steps; j++) { //all LED ramping up
+        set_all_pwm_to(gamma_correct(j));
+        delay(0);//10ms
+    }
+    delay(0); //keep on 1s
+
+}
+
+uint8_t gamma_correct(uint8_t i) {
+    return pgm_read_byte_near(&PWM_Gamma_Brightness[i]);
+}
