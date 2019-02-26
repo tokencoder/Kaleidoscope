@@ -83,30 +83,41 @@ void init_pwm_data() {
 
 void Init_3741(uint8_t Rdata, uint8_t Gdata, uint8_t Bdata) {
     cmd_3741_write_page(2);
-    for(i=2; i<0xB4; i+=3) {
-        TWI_Send(ADDR_IS31,i,Rdata);//R LED Scaling
-    }
-    for(i=0; i<0xB4; i+=3) {
-        TWI_Send(ADDR_IS31,i,Bdata);//B LED Scaling
-    }
+
+    //uint8_t data[] = {Reg_Add, Reg_Dat };
+   // uint8_t result = twi_writeTo(addr/2, data, ELEMENTS(data), 1, 0);
+
+
+    uint8_t data[181] = {};
+    data[0]=0;
     for(i=1; i<0xB4; i+=3) {
-        TWI_Send(ADDR_IS31,i,Gdata);//B LED Scaling
+	data[i] = Bdata;
+	data[i+1] =0;//Gdata;
+	data[i+2] = Rdata;
     }
+     twi_writeTo(ADDR_IS31/2, data, 0xB5, 1, 0);
+
+
+    // For space efficiency, we reuse the LED sending buffer
+    // The twi library should never send more than the number of elements
+    // we say to send it.
+    // The page 2 version has 180 elements. The page 3 version has only 171.
+
     cmd_3741_write_page(3);
-    for(i=2; i<0xAB; i+=3) {
-        TWI_Send(ADDR_IS31,i,Rdata);//R LED Scaling
-    }
     for(i=1; i<0xAB; i+=3) {
-        TWI_Send(ADDR_IS31,i,Gdata);//G LED Scaling
+	data[i] = Bdata;
+	data[i+1] = Gdata;
+	data[i+2] = Rdata;
     }
-    for(i=0; i<0xAB; i+=3) {
-        TWI_Send(ADDR_IS31,i,Bdata);//B LED Scaling
-    }
+    
+     twi_writeTo(ADDR_IS31/2, data, 0xAC, 1, 0);
+
+
 
     init_pwm_data();
 
     cmd_3741_write_page(4);
-    TWI_Send(ADDR_IS31,0x01,0x7F);//global current
+    TWI_Send(ADDR_IS31,0x01,0xFF);//global current
     TWI_Send(ADDR_IS31,0x00,0x01);//normal operation
 }
 
