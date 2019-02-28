@@ -33,17 +33,17 @@ void setup() {
     digitalWrite(MOSI, HIGH);
     digitalWrite(SS, HIGH);
     uint8_t twi_uninitialized = 1;
-    TWBR=12;
     if (twi_uninitialized--) {
         twi_init();
     }
+    TWBR=10;
 
     //TWBR=2;
     Init_3741(R, G, B);
 }
 
 void IS31FL3741_Test_mode() {
-    Init_3741(0xff, 0xc0, 0xc0);
+    Init_3741(0xff, 0xff, 0xff);
     IS31FL3741_Test_mode1();
 
 }
@@ -92,7 +92,7 @@ void Init_3741(uint8_t Rdata, uint8_t Gdata, uint8_t Bdata) {
     data[0]=0;
     for(i=1; i<0xB4; i+=3) {
 	data[i] = Bdata;
-	data[i+1] =0;//Gdata;
+	data[i+1] =Gdata;
 	data[i+2] = Rdata;
     }
      twi_writeTo(ADDR_IS31/2, data, 0xB5, 1, 0);
@@ -125,15 +125,21 @@ void Init_3741(uint8_t Rdata, uint8_t Gdata, uint8_t Bdata) {
 void set_all_pwm_to(uint8_t step) {
     cmd_3741_write_page(0);
 
+    uint8_t data[0xB5] = {};
+    data[0]=0;
     // PWM Register 0 is 0x00 to 0xB3
-    for(i=0; i<0xB4; i++) {
-        TWI_Send(ADDR_IS31,i,step);//set all PWM
+    for(i=1; i<=0xB4; i++) {
+	data[i]=step;
+
     }
+     twi_writeTo(ADDR_IS31/2, data, 0xB5, 1, 0);
     cmd_3741_write_page(1);
     // PWM Register 1 is 0x00 to 0xAA
-    for(i=0; i<0xAB; i++) {
-        TWI_Send(ADDR_IS31,i,step);//set all PWM
+    for(i=1; i<=0xAB; i++) {
+	data[i]=step;
+
     }
+     twi_writeTo(ADDR_IS31/2, data, 0xAC, 1, 0);
 
 }
 
@@ -142,9 +148,12 @@ void IS31FL3741_Test_mode1() {
     cmd_3741_write_page(0); // "write first frame"
     for (j=0; j<brightness_steps; j++) { //all LED ramping up
         set_all_pwm_to(gamma_correct(j));
-        delay(0);//10ms
     }
-    delay(0); //keep on 1s
+        delay(1000);//10ms
+    for (j=brightness_steps-1; j>0; j--) { //all LED ramping up
+        set_all_pwm_to(gamma_correct(j));
+    }
+        delay(1000);//10ms
 
 }
 

@@ -26,41 +26,46 @@
 #include "kaleidoscope/macro_helpers.h"
 #include "kaleidoscope/hardware/avr/pins_and_ports.h"
 
+#define CRGB(r,g,b) (cRGB){b, g, r}
+
 #include "kaleidoscope/hardware/ATMegaKeyboard.h"
+
+extern "C" {
+#include "twi.h"
+}
+
+#define ELEMENTS(arr)  (sizeof(arr) / sizeof((arr)[0]))
+
+
+#define ADDR_IS31 0x60
+
 
 namespace kaleidoscope {
 namespace hardware {
 namespace keyboardio {
 class Imago: public kaleidoscope::hardware::ATMegaKeyboard {
  public:
-  Imago(void) {
-    /* These two lines here are the result of many hours spent chasing ghosts.
-     * These are great lines, and we love them dearly, for they make a set of
-     * pins that would otherwise be reserved for JTAG accessible from the
-     * firmware.
-     *
-     * Most AVR chips that get put into keyboards have the JTAG port disabled in
-     * fuses, but some do not. When they're used for JTAG, then no matter what
-     * we do in the firmware, they will not be affected. So in case JTAG is not
-     * disabled in fuses, we want to do that in the firmware. Luckily for us,
-     * that's doable, we just have to write the JTD bit into MCUCR twice within
-     * four cycles. These two lines do just that.
-     *
-     * For more information, see the ATMega16U4/ATMega32U4 datasheet, the
-     * following sections:
-     *  - 2.2.7 (PIN Descriptions; PIN F)
-     *  - 7.8.7 (On-chip Debug System)
-     *  - 26.5.1 (MCU Control Register – MCUCR)
-     */
-  }
+  Imago(void) {}
   ATMEGA_KEYBOARD_CONFIG(
     ROW_PIN_LIST({ PIN_F6, PIN_F5, PIN_F4, PIN_F1, PIN_F0}),
     COL_PIN_LIST({ PIN_B2, PIN_B7, PIN_E2, PIN_C7, PIN_C6, PIN_B6, PIN_B5, PIN_B4, PIN_D7, PIN_D6,  PIN_D4, PIN_D5, PIN_D3, PIN_D2, PIN_E6, PIN_F7} )
 
   );
+   
+  static constexpr int8_t led_count = 78;
 
+  static cRGB led_data[117] = {}; // 117 is the number of LEDs the chip drives
+				  // until we clean stuff up a bit, it's easiest to just have the whole struct around
 
-  static constexpr int8_t led_count = 0;
+  void syncLeds(void);
+  void setCrgbAt(byte row, byte col, cRGB color);
+  void setCrgbAt(int8_t i, cRGB crgb);
+  cRGB getCrgbAt(int8_t i);
+  int8_t getLedIndex(byte row, byte col);
+
+  private:
+  static bool isLEDChanged;
+
 };
 
 #define KEYMAP(                                                                    \
