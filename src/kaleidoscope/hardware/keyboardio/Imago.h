@@ -26,9 +26,9 @@
 #include "kaleidoscope/macro_helpers.h"
 #include "kaleidoscope/hardware/avr/pins_and_ports.h"
 
-#define CRGB(r,g,b) (cRGB){b, g, r}
-
 #include "kaleidoscope/hardware/ATMegaKeyboard.h"
+
+#define CRGB(r,g,b) (cRGB){b, g, r}
 
 extern "C" {
 #include "twi.h"
@@ -54,9 +54,9 @@ class Imago: public kaleidoscope::hardware::ATMegaKeyboard {
    
   static constexpr int8_t led_count = 78;
 
-  static cRGB led_data[117] = {}; // 117 is the number of LEDs the chip drives
+  static cRGB led_data[117]; // 117 is the number of LEDs the chip drives
 				  // until we clean stuff up a bit, it's easiest to just have the whole struct around
-
+  void initLeds();
   void syncLeds(void);
   void setCrgbAt(byte row, byte col, cRGB color);
   void setCrgbAt(int8_t i, cRGB crgb);

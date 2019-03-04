@@ -82,11 +82,11 @@ void Imago::syncLeds() {
     uint8_t data[0xB5] = {};
     data[0]=0;
     uint8_t last_led =0;
-    for(i=1; i<0xB4; i+=3) {
+    for(auto i=1; i<0xB4; i+=3) {
         data[i] = led_data[last_led].b;
         data[i+1] =led_data[last_led].g;
         data[i+2] = led_data[last_led].r;
-	last_led=+;
+	last_led++;
     }
      twi_writeTo(ADDR_IS31/2, data, 0xB5, 1, 0);
 
