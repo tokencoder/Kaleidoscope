@@ -35,14 +35,14 @@ static constexpr int8_t key_led_map[4][16] PROGMEM = {
   {0, 7, 8, 15, 16, 23, 31, 30,     33, 32, 40, 47, 48, 55, 56, 63},
 };
 
-void Imago::initLeds(){ 
-    digitalWrite(MOSI, HIGH);
-    digitalWrite(SS, HIGH);
-    uint8_t twi_uninitialized = 1;
-    if (twi_uninitialized--) {
-        twi_init();
-    }
-    TWBR=10;
+void Imago::initLeds() {
+  digitalWrite(MOSI, HIGH);
+  digitalWrite(SS, HIGH);
+  uint8_t twi_uninitialized = 1;
+  if (twi_uninitialized--) {
+    twi_init();
+  }
+  TWBR = 10;
 
 }
 
@@ -79,16 +79,16 @@ void Imago::syncLeds() {
   if (!isLEDChanged)
     return;
 
-    uint8_t data[0xB5] = {};
-    data[0]=0;
-    uint8_t last_led =0;
-    for(auto i=1; i<0xB4; i+=3) {
-        data[i] = led_data[last_led].b;
-        data[i+1] =led_data[last_led].g;
-        data[i+2] = led_data[last_led].r;
-	last_led++;
-    }
-     twi_writeTo(ADDR_IS31/2, data, 0xB5, 1, 0);
+  uint8_t data[0xB5] = {};
+  data[0] = 0;
+  uint8_t last_led = 0;
+  for (auto i = 1; i < 0xB4; i += 3) {
+    data[i] = led_data[last_led].b;
+    data[i + 1] = led_data[last_led].g;
+    data[i + 2] = led_data[last_led].r;
+    last_led++;
+  }
+  twi_writeTo(ADDR_IS31 / 2, data, 0xB5, 1, 0);
 
 
 
