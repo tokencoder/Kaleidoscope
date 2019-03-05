@@ -24,16 +24,46 @@ namespace kaleidoscope {
 namespace hardware {
 namespace keyboardio {
 
+
+
+static constexpr uint8_t CMD_SET_REGISTER = 0xFD;
+static constexpr uint8_t CMD_WRITE_ENABLE = 0xFE;
+static constexpr uint8_t WRITE_ENABLE_ONCE = 0b11000101;
+
+static constexpr uint8_t LED_REGISTER_PWM0 = 0x00;
+static constexpr uint8_t LED_REGISTER_PWM1 = 0x01;
+static constexpr uint8_t LED_REGISTER_DATA0 = 0x02;
+static constexpr uint8_t LED_REGISTER_DATA1 = 0x03;
+static constexpr uint8_t LED_REGISTER_CONTROL = 0x04;
+
+static constexpr uint8_t LED_REGISTER_PWM0_SIZE = 0xB4;
+static constexpr uint8_t LED_REGISTER_PWM1_SIZE = 0xAB;
+static constexpr uint8_t LED_REGISTER_DATA0_SIZE = 0xB4;
+static constexpr uint8_t LED_REGISTER_DATA1_SIZE = 0xAB;
+
+static constexpr uint8_t LED_REGISTER_DATA_LARGEST = LED_REGISTER_DATA0_SIZE;
+
 ATMEGA_KEYBOARD_DATA(Imago);
 constexpr int8_t Imago::led_count;
+
+
+
 bool Imago::isLEDChanged = true;
 
-static constexpr int8_t key_led_map[4][16] PROGMEM = {
+cRGB Imago::led_data[];
+
+static constexpr int8_t key_led_map[5][16] PROGMEM = {
   {3, 4, 11, 12, 19, 20, 26, 27,     36, 37, 43, 44, 51, 52, 59, 60},
   {2, 5, 10, 13, 18, 21, 25, 28,     35, 38, 42, 45, 50, 53, 58, 61},
   {1, 6, 9, 14, 17, 22, 24, 29,     34, 39, 41, 46, 49, 54, 57, 62},
   {0, 7, 8, 15, 16, 23, 31, 30,     33, 32, 40, 47, 48, 55, 56, 63},
+  {0, 7, 8, 15, 16, 23, 31, 30,     33, 32, 40, 47, 48, 55, 56, 63},
 };
+
+void Imago::setup() {
+  ATMegaKeyboard::setup();
+  Imago::initLeds();
+}
 
 void Imago::initLeds() {
   digitalWrite(MOSI, HIGH);
@@ -44,7 +74,31 @@ void Imago::initLeds() {
   }
   TWBR = 10;
 
+    ledDriverSetAllPwmTo(0xFF);
+    ledDriverSelectRegister(LED_REGISTER_CONTROL);
+    twiSend(LED_DRIVER_ADDR,0x01,0xFF);//global current
+    twiSend(LED_DRIVER_ADDR,0x00,0x01);//normal operation
+
 }
+
+void Imago::twiSend(uint8_t addr,uint8_t Reg_Add,uint8_t Reg_Dat) {
+    uint8_t data[] = {Reg_Add, Reg_Dat };
+    uint8_t result = twi_writeTo(addr, data, ELEMENTS(data), 1, 0);
+
+}
+
+void Imago::ledDriverUnlockRegister(void) {
+    twiSend(LED_DRIVER_ADDR,CMD_WRITE_ENABLE, WRITE_ENABLE_ONCE);//unlock
+}
+
+void Imago::ledDriverSelectRegister(uint8_t page) {
+    // Registers automatically get locked at startup and after a given write
+    // It'd be nice to disable that.
+    ledDriverUnlockRegister();
+    twiSend(LED_DRIVER_ADDR,CMD_SET_REGISTER,page);
+}
+
+
 
 
 void Imago::setCrgbAt(int8_t i, cRGB crgb) {
@@ -76,23 +130,75 @@ cRGB Imago::getCrgbAt(int8_t i) {
 }
 
 void Imago::syncLeds() {
-  if (!isLEDChanged)
-    return;
+//  if (!isLEDChanged)
+ //   return;
 
-  uint8_t data[0xB5] = {};
-  data[0] = 0;
+
+  uint8_t data[LED_REGISTER_DATA_LARGEST+1];
+  data[0] = 0;// the address of the first byte to copy in
   uint8_t last_led = 0;
-  for (auto i = 1; i < 0xB4; i += 3) {
+
+
+
+  // Write the first LED bank
+  ledDriverSelectRegister(LED_REGISTER_DATA0);
+
+  for (auto i = 1; i < LED_REGISTER_DATA0_SIZE; i += 3) {
     data[i] = led_data[last_led].b;
     data[i + 1] = led_data[last_led].g;
     data[i + 2] = led_data[last_led].r;
     last_led++;
   }
-  twi_writeTo(ADDR_IS31 / 2, data, 0xB5, 1, 0);
 
+  twi_writeTo(LED_DRIVER_ADDR, data, LED_REGISTER_DATA0_SIZE +1 , 1, 0);
+
+
+  // Don't reset "Last LED", because this is just us picking up from the last bank
+  // TODO - we don't use all 117 LEDs on the Imago, so we can probably stop writing earlier
+  // Write the second LED bank
+
+    // For space efficiency, we reuse the LED sending buffer
+    // The twi library should never send more than the number of elements
+    // we say to send it.
+    // The page 2 version has 180 elements. The page 3 version has only 171.
+
+    ledDriverSelectRegister(LED_REGISTER_DATA1);
+
+  for (auto i = 1; i < LED_REGISTER_DATA1_SIZE; i += 3) {
+    data[i] = led_data[last_led].b;
+    data[i + 1] = led_data[last_led].g;
+    data[i + 2] = led_data[last_led].r;
+    last_led++;
+  }
+
+  twi_writeTo(LED_DRIVER_ADDR, data, LED_REGISTER_DATA1_SIZE +1 , 1, 0);
 
 
   isLEDChanged = false;
+}
+
+
+void Imago::ledDriverSetAllPwmTo(uint8_t step) {
+    ledDriverSelectRegister(LED_REGISTER_PWM0);
+
+    uint8_t data[0xB5] = {};
+    data[0]=0;
+    // PWM Register 0 is 0x00 to 0xB3
+    for(auto i=1; i<=0xB4; i++) {
+        data[i]=step;
+
+    }
+     twi_writeTo(LED_DRIVER_ADDR, data, 0xB5, 1, 0);
+
+
+    ledDriverSelectRegister(LED_REGISTER_PWM1);
+    // PWM Register 1 is 0x00 to 0xAA
+    for(auto i=1; i<=LED_REGISTER_PWM1_SIZE; i++) {
+        data[i]=step;
+
+    }
+     twi_writeTo(LED_DRIVER_ADDR, data, 0xAC, 1, 0);
+
 }
 
 

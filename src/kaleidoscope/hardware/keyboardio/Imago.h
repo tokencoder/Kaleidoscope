@@ -37,7 +37,7 @@ extern "C" {
 #define ELEMENTS(arr)  (sizeof(arr) / sizeof((arr)[0]))
 
 
-#define ADDR_IS31 0x60
+#define LED_DRIVER_ADDR 0x30
 
 
 namespace kaleidoscope {
@@ -56,6 +56,7 @@ class Imago: public kaleidoscope::hardware::ATMegaKeyboard {
 
   static cRGB led_data[117]; // 117 is the number of LEDs the chip drives
   // until we clean stuff up a bit, it's easiest to just have the whole struct around
+  void setup();
   void initLeds();
   void syncLeds(void);
   void setCrgbAt(byte row, byte col, cRGB color);
@@ -65,6 +66,10 @@ class Imago: public kaleidoscope::hardware::ATMegaKeyboard {
 
  private:
   static bool isLEDChanged;
+  static void ledDriverSelectRegister(uint8_t);
+  static void ledDriverUnlockRegister();
+  static void ledDriverSetAllPwmTo(uint8_t);
+  static void twiSend(uint8_t addr,uint8_t Reg_Add,uint8_t Reg_Dat);
 
 };
 
