@@ -69,7 +69,7 @@ class Imago: public kaleidoscope::hardware::ATMegaKeyboard {
   static void ledDriverSelectRegister(uint8_t);
   static void ledDriverUnlockRegister();
   static void ledDriverSetAllPwmTo(uint8_t);
-  static void twiSend(uint8_t addr,uint8_t Reg_Add,uint8_t Reg_Dat);
+  static void twiSend(uint8_t addr, uint8_t Reg_Add, uint8_t Reg_Dat);
 
 };
 
