@@ -23,137 +23,101 @@
 namespace kaleidoscope {
 namespace plugin {
 
-constexpr uint8_t CHATTER_CYCLE_LIMIT = 30;
-constexpr uint8_t TOGGLED_OFF = 2;
-constexpr uint8_t TOGGLED_ON = 1;
-constexpr uint8_t HELD = 3;
-constexpr uint8_t RELEASED = 0;
 
-EventHandlerResult TestMode::beforeReportingState() {
-  if (KeyboardHardware.isKeyswitchPressed(R0C0) &&
-      KeyboardHardware.isKeyswitchPressed(R0C6) &&
-      KeyboardHardware.isKeyswitchPressed(R3C6) &&
-      KeyboardHardware.pressedKeyswitchCount() == 3) {
-    run_tests();
-  }
-  return EventHandlerResult::OK;
+constexpr uint8_t CHATTER_CYCLE_LIMIT = 30;
+
+uint8_t TestMode::actionKey;
+
+void TestMode::setActionKey(uint8_t key) {
+  actionKey = key; 
 }
 
 void TestMode::waitForKeypress() {
-  for (uint8_t temp = 0; temp < 8; temp++) {
-    KeyboardHardware.readMatrix();
-  }
   while (1) {
     KeyboardHardware.readMatrix();
-    if (KeyboardHardware.isKeyswitchPressed(R3C6)
-        && KeyboardHardware.pressedKeyswitchCount() == 1
-        && KeyboardHardware.previousLeftHandState.all == 0) {
+    if (KeyboardHardware.isKeyswitchPressed(actionKey) && 
+	! KeyboardHardware.wasKeyswitchPressed(actionKey)) {
       break;
     }
   }
 }
 
-void TestMode::set_leds(cRGB color) {
+void TestMode::setLeds(cRGB color) {
   ::LEDControl.set_all_leds_to(color);
   ::LEDControl.syncLeds();
   waitForKeypress();
 }
 
-void TestMode::test_leds(void) {
+void TestMode::testLeds(void) {
   constexpr cRGB red = CRGB(201, 0, 0);
   constexpr cRGB blue = CRGB(0, 0, 201);
   constexpr cRGB green = CRGB(0, 201, 0);
   constexpr cRGB brightWhite = CRGB(160, 160, 160);
 
-  // make all the LEDs bright red
-  set_leds(red);
-  // make all the LEDs bright green
-  set_leds(green);
-  // make all the LEDs bright blue
-  set_leds(blue);
-  // make all the LEDs bright white (1.6A)
-  set_leds(brightWhite);
   // rainbow for 10 seconds
   for (auto i = 0; i < 1000; i++) {
     ::LEDRainbowEffect.update();
     ::LEDControl.syncLeds();
   }
-  waitForKeypress();
+  setLeds(brightWhite);
+  setLeds(blue);
+  setLeds(green);
+  setLeds(red);
 }
 
-
-
-void TestMode::handleKeyEvent(side_data_t *side, keydata_t *oldState, keydata_t *newState, uint8_t row, uint8_t col, uint8_t col_offset) {
-
-  constexpr cRGB red = CRGB(201, 0, 0);
-  constexpr cRGB blue = CRGB(0, 0, 201);
-  constexpr cRGB green = CRGB(0, 201, 0);
-
-  const uint8_t keynum = (row * 8) + (col);
-
-  const uint8_t keyState = ((bitRead(oldState->all, keynum) << 1) |
-                            (bitRead(newState->all, keynum) << 0));
-  if (keyState == TOGGLED_ON) {
-    if (side->cyclesSinceStateChange[keynum] < CHATTER_CYCLE_LIMIT) {
-      bitSet(side->badKeys, keynum);
-    }
-    side->cyclesSinceStateChange[keynum] = 0;
-  } else if (side->cyclesSinceStateChange[keynum] <= CHATTER_CYCLE_LIMIT)  {
-    side->cyclesSinceStateChange[keynum]++;
-  }
-
-
-
-  // If the key is held down
-  if (keyState == HELD) {
-    KeyboardHardware.setCrgbAt(row, col_offset - col, green);
-  } else if (bitRead(side->badKeys, keynum) == 1) {
-    // If we triggered chatter detection ever on this key
-    KeyboardHardware.setCrgbAt(row, col_offset - col, red);
-  } else if (keyState == TOGGLED_OFF) {
-    // If the key was just released
-    KeyboardHardware.setCrgbAt(row, col_offset - col, blue);
-  }
-}
 
 
 void TestMode::testMatrix() {
   // Reset bad keys from previous tests.
-  side_data_t left = {{0}, 0};
-  side_data_t right = {{0}, 0};
+  chatter_data state[KeyboardHardware.matrix_columns * KeyboardHardware.matrix_rows] = {0,0};
 
+  constexpr cRGB red = CRGB(201, 0, 0);
+  constexpr cRGB blue = CRGB(0, 0, 201);
+  constexpr cRGB green = CRGB(0, 201, 0);
+  constexpr cRGB white = CRGB(160, 160, 160);
 
-  ::LEDControl.set_all_leds_to(200, 0, 0);
-  // Clear out the key event buffer so we don't get messed up information from
-  // taps during LED test mode.
   while (1) {
     KeyboardHardware.readMatrix();
-    if (KeyboardHardware.isKeyswitchPressed(R0C0) &&
-        KeyboardHardware.isKeyswitchPressed(R0C6) &&
-        KeyboardHardware.isKeyswitchPressed(R3C6) &&
-        KeyboardHardware.pressedKeyswitchCount() == 3) {
-      break;
-    }
-    for (byte row = 0; row < 4; row++) {
-      for (byte col = 0; col < 8; col++) {
-        handleKeyEvent(&left, &(KeyboardHardware.previousLeftHandState), &(KeyboardHardware.leftHandState), row, col, 7);
-        handleKeyEvent(&right, &(KeyboardHardware.previousRightHandState), &(KeyboardHardware.rightHandState), row, col, 15);
+    for (byte row = 0; row < KeyboardHardware.matrix_rows; row++) {
+      for (byte col = 0; col < KeyboardHardware.matrix_columns; col++) {
+        uint8_t keynum = (row * KeyboardHardware.matrix_columns) + (col);
+
+	// If the key is toggled on
+        if (KeyboardHardware.isKeyswitchPressed(row, col) && ! KeyboardHardware.wasKeyswitchPressed(row, col)) {
+          // And it's too soon (in terms of cycles between changes)
+          if (state[keynum].cyclesSinceStateChange < CHATTER_CYCLE_LIMIT) {
+            state[keynum].bad = 1;
+          }
+          state[keynum].cyclesSinceStateChange = 0;
+        } else if (state[keynum].cyclesSinceStateChange < CHATTER_CYCLE_LIMIT) {
+          state[keynum].cyclesSinceStateChange++;
+        }
+        // If the key is toggled on or off, make the key white
+	if (KeyboardHardware.isKeyswitchPressed(row, col) != KeyboardHardware.wasKeyswitchPressed(row, col)) { 
+          KeyboardHardware.setCrgbAt(row, col, white);
+	} 
+        // If the key is held down
+        else if (KeyboardHardware.isKeyswitchPressed(row, col) && KeyboardHardware.wasKeyswitchPressed(row, col)) {
+          KeyboardHardware.setCrgbAt(row, col, green);
+        } 
+
+        // If we triggered chatter detection ever on this key
+	else if (state[keynum].bad == 1) {
+          KeyboardHardware.setCrgbAt(row, col, red);
+        } 
+        // If the key is not currently pressed and was not just released and is not marked bad
+        else if ( ! KeyboardHardware.isKeyswitchPressed(row, col)) {
+          KeyboardHardware.setCrgbAt(row, col, blue);
+	}
       }
     }
     ::LEDControl.syncLeds();
   }
 }
 
-void TestMode::toggle_programming_leds_on() {
-  PORTD |= (1 << 5);
-  PORTB |= (1 << 0);
-}
-
-void TestMode::run_tests() {
-  toggle_programming_leds_on();
-  // Disable debouncing
-  KeyboardHardware.setKeyscanInterval(2);
-  test_leds();
+void TestMode::runTests() {
+  KeyboardHardware.enableHardwareTestMode();
+  testLeds();
   testMatrix();
 }
 

@@ -16,37 +16,4 @@
 
 #pragma once
 
-#ifdef ARDUINO_AVR_MODEL01
-
-#include <Arduino.h>
-#include "Kaleidoscope.h"
-
-namespace kaleidoscope {
-namespace plugin {
-
-class TestMode : public kaleidoscope::Plugin {
- public:
-
-  typedef struct {
-    uint8_t bad : 1,
-            cyclesSinceStateChange: 7;
-  } chatter_data;
-  static uint8_t actionKey;
-
-  TestMode(void) {}
-
-  static void runTests();
-  static void setActionKey(uint8_t key);
- private:
-  static void testLeds();
-  static void testMatrix();
-  static void toggleProgrammingLedsOn();
-  static void waitForKeypress();
-  static void setLeds(cRGB color);
-};
-}
-}
-
-extern kaleidoscope::plugin::TestMode TestMode;
-
-#endif
+#include "kaleidoscope/plugin/HardwareTestMode.h"
