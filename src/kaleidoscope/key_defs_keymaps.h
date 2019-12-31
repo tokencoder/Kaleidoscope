@@ -21,6 +21,7 @@
 #include "kaleidoscope_internal/deprecations.h"
 
 static const uint8_t LAYER_SHIFT_OFFSET = 42;
+static const uint8_t LAYER_MOVE_OFFSET = LAYER_SHIFT_OFFSET + 33;
 
 #define KEYMAP_0     0
 #define KEYMAP_1     1
@@ -68,3 +69,10 @@ static const uint8_t LAYER_SHIFT_OFFSET = 42;
  * value declared previously.
  */
 #define ShiftToLayer(n) Key(n + LAYER_SHIFT_OFFSET, KEY_FLAGS | SYNTHETIC | SWITCH_TO_KEYMAP)
+
+/** Move to layer `n`.
+ *
+ * Moving to a layer disables all other layers. Unlike locking and shifting to,
+ * this is a one-way operation.
+ */
+#define MoveToLayer(n) Key(n + LAYER_MOVE_OFFSET, KEY_FLAGS | SYNTHETIC | SWITCH_TO_KEYMAP)

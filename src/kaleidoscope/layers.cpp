@@ -86,6 +86,10 @@ void Layer_::handleKeymapKeyswitchEvent(Key keymapEntry, uint8_t keyState) {
       }
       break;
     }
+  } else if (keymapEntry.getKeyCode() >= LAYER_MOVE_OFFSET) {
+    if (keyToggledOn(keyState)) {
+      move(keymapEntry.getKeyCode() - LAYER_MOVE_OFFSET);
+    }
   } else if (keyToggledOn(keyState)) {
     // switch keymap and stay there
     if (Layer.isActive(keymapEntry.getKeyCode()) && keymapEntry.getKeyCode())
